@@ -7,9 +7,8 @@ import (
 type MerkleTreeConfig struct {
 	hashingAlgorithmFactory func() hash.Hash
 }
-type MerkleTree interface {
-	New(config MerkleTreeConfig, data [][]byte) MerkleTree
 
+type MerkleTree interface {
 	GetMerkleProof(hash []byte) ([][]byte, error)
 
 	VerifyMerkleProof(hash []byte, proof [][]byte) bool

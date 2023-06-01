@@ -1,6 +1,9 @@
 package gerkle
 
-import "bytes"
+import (
+	"bytes"
+	"fmt"
+)
 
 type Node struct {
 	Left   *Node
@@ -17,12 +20,34 @@ type SimpleMerkleTree struct {
 	leafs  []*Node
 }
 
-func (s SimpleMerkleTree) New(config MerkleTreeConfig, data [][]byte) MerkleTree {
+type EmptyTreeDataError struct {
+}
+
+func (r *EmptyTreeDataError) Error() string {
+	return fmt.Sprintf("Provide a non-empty slice of data to create a valid merkle tree")
+}
+
+func NewSimpleMerkleTree(config MerkleTreeConfig, data [][]byte) (MerkleTree, error) {
+	if len(data) == 0 {
+		return nil, &EmptyTreeDataError{}
+	}
 	tree := &SimpleMerkleTree{config: config}
-	leafNodes := s.createLeafNodes(data)
+	leafNodes := createLeafNodes(data, tree.config)
 	buildTreeFromLeafs(tree, leafNodes)
 
-	return tree
+	return tree, nil
+}
+
+func createLeafNodes(data [][]byte, config MerkleTreeConfig) []*Node {
+	var nodes []*Node
+	for _, d := range data {
+		nodes = append(nodes, &Node{data: d, Hash: getHashFromData(d, config)})
+	}
+	if len(nodes)%2 != 0 {
+		lastNode := nodes[len(nodes)-1]
+		nodes = append(nodes, &Node{data: lastNode.data, Hash: lastNode.Hash})
+	}
+	return nodes
 }
 
 func buildTreeFromLeafs(tree *SimpleMerkleTree, leafNodes []*Node) {
@@ -59,20 +84,8 @@ func buildTreeFromLeafs(tree *SimpleMerkleTree, leafNodes []*Node) {
 	}
 }
 
-func (s SimpleMerkleTree) createLeafNodes(data [][]byte) []*Node {
-	var nodes []*Node
-	for _, d := range data {
-		nodes = append(nodes, &Node{data: d, Hash: s.getHashFromData(d)})
-	}
-	if len(nodes)%2 != 0 {
-		lastNode := nodes[len(nodes)-1]
-		nodes = append(nodes, &Node{data: lastNode.data, Hash: lastNode.Hash})
-	}
-	return nodes
-}
-
-func (s SimpleMerkleTree) getHashFromData(data []byte) []byte {
-	h := s.config.hashingAlgorithmFactory()
+func getHashFromData(data []byte, treeConfig MerkleTreeConfig) []byte {
+	h := treeConfig.hashingAlgorithmFactory()
 	h.Write(data)
 	return h.Sum(nil)
 }
