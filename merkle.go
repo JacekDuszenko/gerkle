@@ -14,4 +14,15 @@ type MerkleTree interface {
 	VerifyMerkleProof(hash []byte, proof [][]byte) bool
 
 	UpdateLeaf(oldHash []byte, newHash []byte) error
+
+	GetRoot() *Node
+}
+
+type Node struct {
+	Left   *Node
+	Right  *Node
+	Parent *Node
+
+	Hash []byte
+	data []byte
 }

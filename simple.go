@@ -5,16 +5,7 @@ import (
 	"fmt"
 )
 
-type Node struct {
-	Left   *Node
-	Right  *Node
-	Parent *Node
-
-	Hash []byte
-	data []byte
-}
-
-type SimpleMerkleTree struct {
+type simpleMerkleTree struct {
 	config MerkleTreeConfig
 	Root   *Node
 	leafs  []*Node
@@ -31,7 +22,7 @@ func NewSimpleMerkleTree(config MerkleTreeConfig, data [][]byte) (MerkleTree, er
 	if len(data) == 0 {
 		return nil, &EmptyTreeDataError{}
 	}
-	tree := &SimpleMerkleTree{config: config}
+	tree := &simpleMerkleTree{config: config}
 	leafNodes := createLeafNodes(data, tree.config)
 	buildTreeFromLeafs(tree, leafNodes)
 
@@ -50,7 +41,7 @@ func createLeafNodes(data [][]byte, config MerkleTreeConfig) []*Node {
 	return nodes
 }
 
-func buildTreeFromLeafs(tree *SimpleMerkleTree, leafNodes []*Node) {
+func buildTreeFromLeafs(tree *simpleMerkleTree, leafNodes []*Node) {
 	tree.leafs = leafNodes
 
 	currentLevel := leafNodes
@@ -70,8 +61,8 @@ func buildTreeFromLeafs(tree *SimpleMerkleTree, leafNodes []*Node) {
 			nextLevel = append(nextLevel, parent)
 		}
 		if len(nextLevel) == 1 {
-			root := nextLevel[0]
-			tree.Root = root
+			tree.Root = nextLevel[0]
+			tree.Root.Parent = nil
 			return
 		}
 		if len(nextLevel)%2 != 0 {
@@ -90,17 +81,21 @@ func getHashFromData(data []byte, treeConfig MerkleTreeConfig) []byte {
 	return h.Sum(nil)
 }
 
-func (s SimpleMerkleTree) GetMerkleProof(hash []byte) ([][]byte, error) {
+func (s simpleMerkleTree) GetRoot() *Node {
+	return s.Root
+}
+
+func (s simpleMerkleTree) GetMerkleProof(hash []byte) ([][]byte, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s SimpleMerkleTree) VerifyMerkleProof(hash []byte, proof [][]byte) bool {
+func (s simpleMerkleTree) VerifyMerkleProof(hash []byte, proof [][]byte) bool {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s SimpleMerkleTree) UpdateLeaf(oldHash []byte, newHash []byte) error {
+func (s simpleMerkleTree) UpdateLeaf(oldHash []byte, newHash []byte) error {
 	//TODO implement me
 	panic("implement me")
 }
