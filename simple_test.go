@@ -15,7 +15,7 @@ func TestCreateEmptyTree(t *testing.T) {
 	assert.Equal(t, err, &EmptyTreeDataError{})
 }
 
-func TestCreateTreeWithOneNode(t *testing.T) {
+func TestCreateTreeSingleLeaf(t *testing.T) {
 	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
 	byteData := []byte("test data")
 	expectedMerkleRoot := []byte{
@@ -45,4 +45,37 @@ func TestCreateTreeWithOneNode(t *testing.T) {
 	assert.Equal(t, tree.GetRoot().Left, tree.GetRoot().Right)
 
 	assert.Equal(t, tree.GetRoot().Hash, expectedMerkleRoot)
+}
+
+func TestCreateTreeTwoLeafs(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	byteData := [][]byte{[]byte("test data first"), []byte("test data second")}
+
+	tree, err := NewSimpleMerkleTree(config, byteData)
+
+	assert.Nil(t, err)
+	assert.Nil(t, tree.GetRoot().Parent)
+	assert.Nil(t, tree.GetRoot().data)
+	assert.Nil(t, tree.GetRoot().Left.Left)
+	assert.Nil(t, tree.GetRoot().Left.Right)
+	assert.Nil(t, tree.GetRoot().Right.Left)
+	assert.Nil(t, tree.GetRoot().Right.Right)
+
+	assert.Equal(t, tree.GetRoot().Left.data, byteData[0])
+	assert.Equal(t, tree.GetRoot().Right.data, byteData[1])
+}
+
+// Checks whether two nodes that appear in different order produce the same hash
+// The sorting property is important to generate correct Merkle proofs
+func TestCreateTreeMerkleTheSameWithDifferentOrders(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	byteDataFirst := [][]byte{[]byte("one"), []byte("two")}
+	byteDataSecond := [][]byte{[]byte("two"), []byte("one")}
+
+	firstTree, firstErr := NewSimpleMerkleTree(config, byteDataFirst)
+	secondTree, secondErr := NewSimpleMerkleTree(config, byteDataSecond)
+	assert.Nil(t, firstErr)
+	assert.Nil(t, secondErr)
+
+	assert.Equal(t, firstTree.GetRoot().Hash, secondTree.GetRoot().Hash)
 }
