@@ -79,3 +79,69 @@ func TestCreateTreeMerkleTheSameWithDifferentOrders(t *testing.T) {
 
 	assert.Equal(t, firstTree.GetRoot().Hash, secondTree.GetRoot().Hash)
 }
+
+func TestVerifyMerkleProofEmptyProof(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one"), []byte("two")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	correct, err := tree.VerifyMerkleProof(data[0], nil)
+
+	assert.False(t, correct)
+	assert.Equal(t, &EmptyMerkleProofError{}, err)
+}
+
+func TestVerifyMerkleProofInvalidProof(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one"), []byte("two"), []byte("three"), []byte("four"), []byte("five")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	invalidProof := [][]byte{{0x53, 0x54}, {0x23, 0xff}}
+
+	correct, err := tree.VerifyMerkleProof(data[0], invalidProof)
+
+	assert.False(t, correct)
+	assert.Nil(t, err)
+}
+
+func TestVerifyMerkleProofTwoElements(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one"), []byte("two")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	h := config.hashingAlgorithmFactory()
+	h.Write(data[0])
+	hashOfFirstElement := h.Sum(nil)
+
+	correct, err := tree.VerifyMerkleProof(data[1], [][]byte{hashOfFirstElement})
+	assert.True(t, correct)
+	assert.Nil(t, err)
+
+	h2 := config.hashingAlgorithmFactory()
+	h2.Write(data[1])
+	hashOfSecondElement := h2.Sum(nil)
+
+	correct, err = tree.VerifyMerkleProof(data[0], [][]byte{hashOfSecondElement})
+	assert.True(t, correct)
+	assert.Nil(t, err)
+}
+
+func TestVerifyMerkleProofMultipleElements(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one"), []byte("two"), []byte("three"), []byte("four"), []byte("five")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	proofForFirstElement := [][]byte{tree.GetRoot().Left.Left.Right.Hash, tree.GetRoot().Left.Right.Hash, tree.GetRoot().Right.Hash}
+
+	correct, err := tree.VerifyMerkleProof(data[0], proofForFirstElement)
+
+	assert.True(t, correct)
+	assert.Nil(t, err)
+
+	proofForOddElement := [][]byte{tree.GetRoot().Right.Left.Right.Hash, tree.GetRoot().Right.Right.Hash, tree.GetRoot().Left.Hash}
+
+	correct, err = tree.VerifyMerkleProof(data[4], proofForOddElement)
+
+	assert.True(t, correct)
+	assert.Nil(t, err)
+}

@@ -2,6 +2,7 @@ package gerkle
 
 import (
 	"bytes"
+	"hash"
 )
 
 type simpleMerkleTree struct {
@@ -17,6 +18,13 @@ func (r *EmptyTreeDataError) Error() string {
 	return "Provide a non-empty slice of data to create a valid merkle tree"
 }
 
+type EmptyMerkleProofError struct {
+}
+
+func (r *EmptyMerkleProofError) Error() string {
+	return "Provide a non-empty merkle proof to verify it"
+}
+
 func NewSimpleMerkleTree(config MerkleTreeConfig, data [][]byte) (MerkleTree, error) {
 	if len(data) == 0 {
 		return nil, &EmptyTreeDataError{}
@@ -26,6 +34,44 @@ func NewSimpleMerkleTree(config MerkleTreeConfig, data [][]byte) (MerkleTree, er
 	buildTreeFromLeafs(tree, leafNodes)
 
 	return tree, nil
+}
+
+func (s simpleMerkleTree) GetRoot() *Node {
+	return s.Root
+}
+
+func (s simpleMerkleTree) GetMerkleProof(hash []byte) ([][]byte, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s simpleMerkleTree) VerifyMerkleProof(data []byte, merkleProof [][]byte) (bool, error) {
+	if len(merkleProof) == 0 {
+		return false, &EmptyMerkleProofError{}
+	}
+	h := s.config.hashingAlgorithmFactory()
+	h.Write(data)
+	dataHash := h.Sum(nil)
+	for _, nodeHash := range merkleProof {
+		dataHash = hashInOrder(s.config.hashingAlgorithmFactory(), dataHash, nodeHash)
+	}
+
+	return bytes.Equal(dataHash, s.Root.Hash), nil
+}
+
+func hashInOrder(hashingAlgorithm hash.Hash, first []byte, second []byte) []byte {
+	if bytes.Compare(first, second) == 1 {
+		first, second = second, first
+	}
+	hashingAlgorithm.Write(first)
+	hashingAlgorithm.Write(second)
+
+	return hashingAlgorithm.Sum(nil)
+}
+
+func (s simpleMerkleTree) UpdateLeaf(oldHash []byte, newHash []byte) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func createLeafNodes(data [][]byte, config MerkleTreeConfig) []*Node {
@@ -48,13 +94,7 @@ func buildTreeFromLeafs(tree *simpleMerkleTree, leafNodes []*Node) {
 	for {
 		for i := 0; i < len(currentLevel); i += 2 {
 			left, right := currentLevel[i], currentLevel[i+1]
-			if bytes.Compare(left.Hash, right.Hash) == 1 {
-				left, right = right, left
-			}
-			h := tree.config.hashingAlgorithmFactory()
-			h.Write(left.Hash)
-			h.Write(right.Hash)
-			parent := &Node{Left: left, Right: right, Hash: h.Sum(nil)}
+			parent := &Node{Left: left, Right: right, Hash: hashInOrder(tree.config.hashingAlgorithmFactory(), left.Hash, right.Hash)}
 			left.Parent = parent
 			right.Parent = parent
 			nextLevel = append(nextLevel, parent)
@@ -78,23 +118,4 @@ func getHashFromData(data []byte, treeConfig MerkleTreeConfig) []byte {
 	h := treeConfig.hashingAlgorithmFactory()
 	h.Write(data)
 	return h.Sum(nil)
-}
-
-func (s simpleMerkleTree) GetRoot() *Node {
-	return s.Root
-}
-
-func (s simpleMerkleTree) GetMerkleProof(hash []byte) ([][]byte, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s simpleMerkleTree) VerifyMerkleProof(hash []byte, proof [][]byte) bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s simpleMerkleTree) UpdateLeaf(oldHash []byte, newHash []byte) error {
-	//TODO implement me
-	panic("implement me")
 }

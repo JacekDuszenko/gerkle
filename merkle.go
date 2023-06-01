@@ -11,7 +11,7 @@ type MerkleTreeConfig struct {
 type MerkleTree interface {
 	GetMerkleProof(hash []byte) ([][]byte, error)
 
-	VerifyMerkleProof(hash []byte, proof [][]byte) bool
+	VerifyMerkleProof(hash []byte, proof [][]byte) (bool, error)
 
 	UpdateLeaf(oldHash []byte, newHash []byte) error
 
