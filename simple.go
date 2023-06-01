@@ -2,7 +2,6 @@ package gerkle
 
 import (
 	"bytes"
-	"fmt"
 )
 
 type simpleMerkleTree struct {
@@ -15,7 +14,7 @@ type EmptyTreeDataError struct {
 }
 
 func (r *EmptyTreeDataError) Error() string {
-	return fmt.Sprintf("Provide a non-empty slice of data to create a valid merkle tree")
+	return "Provide a non-empty slice of data to create a valid merkle tree"
 }
 
 func NewSimpleMerkleTree(config MerkleTreeConfig, data [][]byte) (MerkleTree, error) {
