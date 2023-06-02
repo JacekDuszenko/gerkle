@@ -131,14 +131,22 @@ func TestSimpleMerkleTree_VerifyMerkleProof_MultipleElements(t *testing.T) {
 	data := [][]byte{[]byte("one"), []byte("two"), []byte("three"), []byte("four"), []byte("five")}
 	tree, _ := NewSimpleMerkleTree(config, data)
 
-	proofForFirstElement := [][]byte{tree.GetRoot().Left.Left.Right.Hash, tree.GetRoot().Left.Right.Hash, tree.GetRoot().Right.Hash}
+	proofForFirstElement := [][]byte{
+		tree.GetRoot().Left.Left.Right.Hash,
+		tree.GetRoot().Left.Right.Hash,
+		tree.GetRoot().Right.Hash,
+	}
 
 	correct, err := tree.VerifyMerkleProof(data[0], proofForFirstElement)
 
 	assert.True(t, correct)
 	assert.Nil(t, err)
 
-	proofForOddElement := [][]byte{tree.GetRoot().Right.Left.Right.Hash, tree.GetRoot().Right.Right.Hash, tree.GetRoot().Left.Hash}
+	proofForOddElement := [][]byte{
+		tree.GetRoot().Right.Left.Right.Hash,
+		tree.GetRoot().Right.Right.Hash,
+		tree.GetRoot().Left.Hash,
+	}
 
 	correct, err = tree.VerifyMerkleProof(data[4], proofForOddElement)
 
@@ -202,7 +210,15 @@ func TestSimpleMerkleTree_GetMerkleProof_MultipleNodes(t *testing.T) {
 	proof, err := tree.GetMerkleProof([]byte("one"))
 
 	assert.Nil(t, err)
-	assert.Equal(t, [][]byte{tree.GetRoot().Left.Left.Right.Hash, tree.GetRoot().Left.Right.Hash, tree.GetRoot().Right.Hash}, proof)
+	assert.Equal(
+		t,
+		[][]byte{
+			tree.GetRoot().Left.Left.Right.Hash,
+			tree.GetRoot().Left.Right.Hash,
+			tree.GetRoot().Right.Hash,
+		},
+		proof,
+	)
 }
 
 func TestSimpleMerkleTree_UpdateLeaf_NilNewData(t *testing.T) {
@@ -260,8 +276,8 @@ func TestSimpleMerkleTree_UpdateLeaf_DoubleUpdate(t *testing.T) {
 	data := [][]byte{[]byte("one")}
 	tree, _ := NewSimpleMerkleTree(config, data)
 
-	err := tree.UpdateLeaf([]byte("one"), []byte("two"))
-	err = tree.UpdateLeaf([]byte("two"), []byte("three"))
+	_ = tree.UpdateLeaf([]byte("one"), []byte("two"))
+	_ = tree.UpdateLeaf([]byte("two"), []byte("three"))
 
 	assert.Equal(t, tree.GetRoot().Left.data, []byte("three"))
 	// Check right node to verify if duplicate node data changes as well

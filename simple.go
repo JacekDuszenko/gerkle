@@ -62,12 +62,8 @@ func (s *simpleMerkleTree) GetRoot() *Node {
 }
 
 func (s *simpleMerkleTree) GetMerkleProof(data []byte) ([][]byte, error) {
-	if data == nil {
-
-	}
 	results := make([][]byte, 0)
-	dataHash := string(calculateHashFromData(data, s.config))
-	node, ok := s.leafsByHashes[dataHash]
+	node, ok := s.leafsByHashes[string(calculateHashFromData(data, s.config))]
 	if !ok {
 		return nil, &DataNotInMerkleTreeError{}
 	}
@@ -124,7 +120,11 @@ func (s *simpleMerkleTree) UpdateLeaf(oldData []byte, newData []byte) error {
 	node.Hash = newHash
 
 	for node.Parent != nil {
-		node.Parent.Hash = hashInOrder(s.config.hashingAlgorithmFactory(), node.Parent.Left.Hash, node.Parent.Right.Hash)
+		node.Parent.Hash = hashInOrder(
+			s.config.hashingAlgorithmFactory(),
+			node.Parent.Left.Hash,
+			node.Parent.Right.Hash,
+		)
 		node = node.Parent
 	}
 	return nil
@@ -162,7 +162,11 @@ func buildTreeFromLeafs(tree *simpleMerkleTree, leafNodes []*Node) {
 	for {
 		for i := 0; i < len(currentLevel); i += 2 {
 			left, right := currentLevel[i], currentLevel[i+1]
-			parent := &Node{Left: left, Right: right, Hash: hashInOrder(tree.config.hashingAlgorithmFactory(), left.Hash, right.Hash)}
+			parent := &Node{
+				Left:  left,
+				Right: right,
+				Hash:  hashInOrder(tree.config.hashingAlgorithmFactory(), left.Hash, right.Hash),
+			}
 			left.Parent = parent
 			right.Parent = parent
 			nextLevel = append(nextLevel, parent)
