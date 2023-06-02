@@ -29,3 +29,12 @@ fuzz: elapsed: 5m6s, execs: 27578026 (100290/sec), new interesting: 34 (total: 3
 ```
 
 1. To run benchmark tests: `go test -bench=.`
+Example output from bench testing:
+```
+goos: darwin
+goarch: arm64
+pkg: github.com/JacekDuszenko/gerkle
+BenchmarkSimpleMerkleTree10-10      	  230812	      5458 ns/op
+BenchmarkSimpleMerkleTree1000-10    	    1340	    876780 ns/op
+BenchmarkSimpleMerkleTree10K-10     	       1	7266182292 ns/op
+```
