@@ -14,9 +14,9 @@ type MerkleTreeConfig struct {
 // MerkleTree specifies a set of methods for generating
 // and verifying Merkle proofs.
 //
-// GetMerkleProof accepts bytes of data and creates a Merkle proof if the data is present in the tree.
-// The proof can then be verified by VerifyMerkleProof,
-// by passing a data existence of which is to be verified and the proof itself
+// GetMerkleProof accepts bytes of data and creates a Merkle proof if the data
+// is present in the tree. The proof can then be verified by VerifyMerkleProof,
+// by passing the data and the proof itself.
 // UpdateLeaf allows for efficient updates of the data inside the tree.
 // Updating with a value that's already in the tree is not allowed
 // GetRoot allows to get a reference to the root node of the tree.
