@@ -8,13 +8,6 @@ import (
 )
 
 func FuzzSimpleMerkleTree(f *testing.F) {
-	//testcases := [][][]byte{
-	//	{[]byte("abc"), []byte("def")},
-	//	{[]byte("ghi"), []byte("jkl")},
-	//}
-	//for _, tc := range testcases {
-	//	f.Add(tc) // Use f.Add to provide a seed corpus
-	//}
 	f.Fuzz(func(t *testing.T, _ int) {
 		var data [][]byte
 		fuzzer := fuzz.New()
