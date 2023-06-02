@@ -9,11 +9,11 @@ type MerkleTreeConfig struct {
 }
 
 type MerkleTree interface {
-	GetMerkleProof(hash []byte) ([][]byte, error)
+	GetMerkleProof(data []byte) ([][]byte, error)
 
-	VerifyMerkleProof(hash []byte, proof [][]byte) (bool, error)
+	VerifyMerkleProof(data []byte, proof [][]byte) (bool, error)
 
-	UpdateLeaf(oldHash []byte, newHash []byte) error
+	UpdateLeaf(oldData []byte, newData []byte) error
 
 	GetRoot() *Node
 }

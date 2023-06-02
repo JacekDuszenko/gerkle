@@ -6,9 +6,9 @@ import (
 )
 
 type simpleMerkleTree struct {
-	config MerkleTreeConfig
-	Root   *Node
-	leafs  []*Node
+	config        MerkleTreeConfig
+	Root          *Node
+	leafsByHashes map[string]*Node
 }
 
 type EmptyTreeDataError struct {
@@ -25,27 +25,51 @@ func (r *EmptyMerkleProofError) Error() string {
 	return "Provide a non-empty merkle proof to verify it"
 }
 
+type DataNotInMerkleTreeError struct {
+}
+
+func (r *DataNotInMerkleTreeError) Error() string {
+	return "Provided data is not part of merkle tree, proof for it cannot be generated"
+}
+
 func NewSimpleMerkleTree(config MerkleTreeConfig, data [][]byte) (MerkleTree, error) {
 	if len(data) == 0 {
 		return nil, &EmptyTreeDataError{}
 	}
 	tree := &simpleMerkleTree{config: config}
-	leafNodes := createLeafNodes(data, tree.config)
+	leafNodes := tree.createLeafNodes(data, tree.config)
 	buildTreeFromLeafs(tree, leafNodes)
 
 	return tree, nil
 }
 
-func (s simpleMerkleTree) GetRoot() *Node {
+func (s *simpleMerkleTree) GetRoot() *Node {
 	return s.Root
 }
 
-func (s simpleMerkleTree) GetMerkleProof(hash []byte) ([][]byte, error) {
-	//TODO implement me
-	panic("implement me")
+func (s *simpleMerkleTree) GetMerkleProof(data []byte) ([][]byte, error) {
+	if data == nil {
+
+	}
+	results := make([][]byte, 0)
+	dataHash := string(getHashFromData(data, s.config))
+	node, ok := s.leafsByHashes[dataHash]
+	if !ok {
+		return nil, &DataNotInMerkleTreeError{}
+	}
+
+	for node.Parent != nil {
+		if node.Parent.Left == node {
+			results = append(results, node.Parent.Right.Hash)
+		} else {
+			results = append(results, node.Parent.Left.Hash)
+		}
+		node = node.Parent
+	}
+	return results, nil
 }
 
-func (s simpleMerkleTree) VerifyMerkleProof(data []byte, merkleProof [][]byte) (bool, error) {
+func (s *simpleMerkleTree) VerifyMerkleProof(data []byte, merkleProof [][]byte) (bool, error) {
 	if len(merkleProof) == 0 {
 		return false, &EmptyMerkleProofError{}
 	}
@@ -69,15 +93,19 @@ func hashInOrder(hashingAlgorithm hash.Hash, first []byte, second []byte) []byte
 	return hashingAlgorithm.Sum(nil)
 }
 
-func (s simpleMerkleTree) UpdateLeaf(oldHash []byte, newHash []byte) error {
+func (s *simpleMerkleTree) UpdateLeaf(oldHash []byte, newHash []byte) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func createLeafNodes(data [][]byte, config MerkleTreeConfig) []*Node {
+func (s *simpleMerkleTree) createLeafNodes(data [][]byte, config MerkleTreeConfig) []*Node {
+	s.leafsByHashes = make(map[string]*Node)
 	var nodes []*Node
 	for _, d := range data {
-		nodes = append(nodes, &Node{data: d, Hash: getHashFromData(d, config)})
+		nodeHash := getHashFromData(d, config)
+		node := &Node{data: d, Hash: nodeHash}
+		nodes = append(nodes, node)
+		s.leafsByHashes[string(nodeHash)] = node
 	}
 	if len(nodes)%2 != 0 {
 		lastNode := nodes[len(nodes)-1]
@@ -87,8 +115,6 @@ func createLeafNodes(data [][]byte, config MerkleTreeConfig) []*Node {
 }
 
 func buildTreeFromLeafs(tree *simpleMerkleTree, leafNodes []*Node) {
-	tree.leafs = leafNodes
-
 	currentLevel := leafNodes
 	var nextLevel []*Node
 	for {

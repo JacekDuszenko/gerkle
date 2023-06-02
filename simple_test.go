@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateEmptyTree(t *testing.T) {
+func TestNewSimpleMerkleTree_Empty(t *testing.T) {
 	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
 
 	_, err := NewSimpleMerkleTree(config, nil)
@@ -15,7 +15,7 @@ func TestCreateEmptyTree(t *testing.T) {
 	assert.Equal(t, err, &EmptyTreeDataError{})
 }
 
-func TestCreateTreeSingleLeaf(t *testing.T) {
+func TestNewSimpleMerkleTree_SingleLeaf(t *testing.T) {
 	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
 	byteData := []byte("test data")
 	expectedMerkleRoot := []byte{
@@ -47,7 +47,7 @@ func TestCreateTreeSingleLeaf(t *testing.T) {
 	assert.Equal(t, tree.GetRoot().Hash, expectedMerkleRoot)
 }
 
-func TestCreateTreeTwoLeafs(t *testing.T) {
+func TestNewSimpleMerkleTree_TwoLeafs(t *testing.T) {
 	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
 	byteData := [][]byte{[]byte("test data first"), []byte("test data second")}
 
@@ -67,7 +67,7 @@ func TestCreateTreeTwoLeafs(t *testing.T) {
 
 // Checks whether two nodes that appear in different order produce the same hash
 // The sorting property is important to generate correct Merkle proofs
-func TestCreateTreeMerkleTheSameWithDifferentOrders(t *testing.T) {
+func TestNewSimpleMerkleTree_DifferentOrderOfNodes(t *testing.T) {
 	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
 	byteDataFirst := [][]byte{[]byte("one"), []byte("two")}
 	byteDataSecond := [][]byte{[]byte("two"), []byte("one")}
@@ -80,7 +80,7 @@ func TestCreateTreeMerkleTheSameWithDifferentOrders(t *testing.T) {
 	assert.Equal(t, firstTree.GetRoot().Hash, secondTree.GetRoot().Hash)
 }
 
-func TestVerifyMerkleProofEmptyProof(t *testing.T) {
+func TestSimpleMerkleTree_VerifyMerkleProof_Empty(t *testing.T) {
 	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
 	data := [][]byte{[]byte("one"), []byte("two")}
 	tree, _ := NewSimpleMerkleTree(config, data)
@@ -91,7 +91,7 @@ func TestVerifyMerkleProofEmptyProof(t *testing.T) {
 	assert.Equal(t, &EmptyMerkleProofError{}, err)
 }
 
-func TestVerifyMerkleProofInvalidProof(t *testing.T) {
+func TestSimpleMerkleTree_VerifyMerkleProof_Invalid(t *testing.T) {
 	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
 	data := [][]byte{[]byte("one"), []byte("two"), []byte("three"), []byte("four"), []byte("five")}
 	tree, _ := NewSimpleMerkleTree(config, data)
@@ -104,7 +104,7 @@ func TestVerifyMerkleProofInvalidProof(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestVerifyMerkleProofTwoElements(t *testing.T) {
+func TestSimpleMerkleTree_VerifyMerkleProof_TwoElements(t *testing.T) {
 	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
 	data := [][]byte{[]byte("one"), []byte("two")}
 	tree, _ := NewSimpleMerkleTree(config, data)
@@ -126,7 +126,7 @@ func TestVerifyMerkleProofTwoElements(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestVerifyMerkleProofMultipleElements(t *testing.T) {
+func TestSimpleMerkleTree_VerifyMerkleProof_MultipleElements(t *testing.T) {
 	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
 	data := [][]byte{[]byte("one"), []byte("two"), []byte("three"), []byte("four"), []byte("five")}
 	tree, _ := NewSimpleMerkleTree(config, data)
@@ -144,4 +144,63 @@ func TestVerifyMerkleProofMultipleElements(t *testing.T) {
 
 	assert.True(t, correct)
 	assert.Nil(t, err)
+}
+
+func TestSimpleMerkleTree_GetMerkleProof_UnknownData(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	proof, err := tree.GetMerkleProof([]byte("two"))
+
+	assert.Nil(t, proof)
+	assert.Equal(t, &DataNotInMerkleTreeError{}, err)
+}
+
+func TestSimpleMerkleTree_GetMerkleProof_Nil(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	proof, err := tree.GetMerkleProof(nil)
+
+	assert.Nil(t, proof)
+	assert.Equal(t, &DataNotInMerkleTreeError{}, err)
+}
+
+func TestSimpleMerkleTree_GetMerkleProof_TwoNodes(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one"), []byte("two")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	firstProof, firstErr := tree.GetMerkleProof([]byte("one"))
+	secondProof, secondErr := tree.GetMerkleProof([]byte("two"))
+	assert.Nil(t, firstErr)
+	assert.Nil(t, secondErr)
+	assert.Equal(t, [][]byte{tree.GetRoot().Right.Hash}, firstProof)
+	assert.Equal(t, [][]byte{tree.GetRoot().Left.Hash}, secondProof)
+}
+
+func TestSimpleMerkleTree_GetMerkleProof_OneNode(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	proof, err := tree.GetMerkleProof([]byte("one"))
+	assert.Nil(t, err)
+
+	// Verify two cases to check if duplicate node was created properly
+	assert.Equal(t, [][]byte{tree.GetRoot().Right.Hash}, proof)
+	assert.Equal(t, [][]byte{tree.GetRoot().Left.Hash}, proof)
+}
+
+func TestSimpleMerkleTree_GetMerkleProof_MultipleNodes(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one"), []byte("two"), []byte("three"), []byte("four"), []byte("five")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	proof, err := tree.GetMerkleProof([]byte("one"))
+
+	assert.Nil(t, err)
+	assert.Equal(t, [][]byte{tree.GetRoot().Left.Left.Right.Hash, tree.GetRoot().Left.Right.Hash, tree.GetRoot().Right.Hash}, proof)
 }
