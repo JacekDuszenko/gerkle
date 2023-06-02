@@ -1,3 +1,4 @@
+// Package gerkle provides the merkle tree implementation
 package gerkle
 
 import (
@@ -5,12 +6,14 @@ import (
 	"hash"
 )
 
+// simpleMerkleTree is a simple iterative implementation of a Merkle tree.
 type simpleMerkleTree struct {
 	config        MerkleTreeConfig
 	Root          *Node
 	leafsByHashes map[string]*Node
 }
 
+// EmptyTreeDataError represents an attempt of creating an empty Merkle tree.
 type EmptyTreeDataError struct {
 }
 
@@ -18,6 +21,7 @@ func (r *EmptyTreeDataError) Error() string {
 	return "Provide a non-empty slice of data to create a valid merkle tree"
 }
 
+// EmptyMerkleProofError represents an attempt of verifying an empty Merkle proof
 type EmptyMerkleProofError struct {
 }
 
@@ -25,6 +29,8 @@ func (r *EmptyMerkleProofError) Error() string {
 	return "Provide a non-empty merkle proof to verify it"
 }
 
+// DataNotInMerkleTreeError signals a behaviour of modifying, updating,
+// or trying to generate a proof for a data that is not present in the Merkle tree.
 type DataNotInMerkleTreeError struct {
 }
 
@@ -32,6 +38,7 @@ func (r *DataNotInMerkleTreeError) Error() string {
 	return "Provided data is not part of merkle tree, proof for it cannot be generated"
 }
 
+// UpdateWithNilDataError signals a behaviour of updating a tree element with nil data
 type UpdateWithNilDataError struct {
 }
 
@@ -39,6 +46,8 @@ func (r *UpdateWithNilDataError) Error() string {
 	return "Provided data is can't be nil"
 }
 
+// UpdateWithExistingDataError signals a behaviour of updating a tree element
+// with an element that already exists in the tree.
 type UpdateWithExistingDataError struct {
 }
 
@@ -46,6 +55,8 @@ func (r *UpdateWithExistingDataError) Error() string {
 	return "The new value already exists in the merkle tree, update is not possible"
 }
 
+// NewSimpleMerkleTree creates the Merkle tree from a non-empty slice of bytes.
+// Each element becomes a leaf in the tree. A proof of existence of each element can be issued
 func NewSimpleMerkleTree(config MerkleTreeConfig, data [][]byte) (MerkleTree, error) {
 	if len(data) == 0 {
 		return nil, &EmptyTreeDataError{}
@@ -57,10 +68,13 @@ func NewSimpleMerkleTree(config MerkleTreeConfig, data [][]byte) (MerkleTree, er
 	return tree, nil
 }
 
+// GetRoot retrieves a root node of a Merkle tree
 func (s *simpleMerkleTree) GetRoot() *Node {
 	return s.Root
 }
 
+// GetMerkleProof creates a Merkle proof for a given tree leaf element.
+// If given data does not exist in the tree, the error is returned.
 func (s *simpleMerkleTree) GetMerkleProof(data []byte) ([][]byte, error) {
 	results := make([][]byte, 0)
 	node, ok := s.leafsByHashes[string(calculateHashFromData(data, s.config))]
@@ -79,6 +93,8 @@ func (s *simpleMerkleTree) GetMerkleProof(data []byte) ([][]byte, error) {
 	return results, nil
 }
 
+// VerifyMerkleProof checks whether given Merkle proof asserts
+// the presence of a given element in the Merkle tree.
 func (s *simpleMerkleTree) VerifyMerkleProof(data []byte, merkleProof [][]byte) (bool, error) {
 	if len(merkleProof) == 0 {
 		return false, &EmptyMerkleProofError{}
@@ -93,6 +109,9 @@ func (s *simpleMerkleTree) VerifyMerkleProof(data []byte, merkleProof [][]byte) 
 	return bytes.Equal(dataHash, s.Root.Hash), nil
 }
 
+// UpdateLeaf allows for efficient updating of an existing element in the tree.
+// Updates with data that already exist in the tree are not allowed. If such data is passed as newData argument,
+// the UpdateWithExistingDataError error is returned. Updates with nil data is not allowed.
 func (s *simpleMerkleTree) UpdateLeaf(oldData []byte, newData []byte) error {
 	if newData == nil {
 		return &UpdateWithNilDataError{}
