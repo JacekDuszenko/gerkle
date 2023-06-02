@@ -204,3 +204,95 @@ func TestSimpleMerkleTree_GetMerkleProof_MultipleNodes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, [][]byte{tree.GetRoot().Left.Left.Right.Hash, tree.GetRoot().Left.Right.Hash, tree.GetRoot().Right.Hash}, proof)
 }
+
+func TestSimpleMerkleTree_UpdateLeaf_NilNewData(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	err := tree.UpdateLeaf([]byte("one"), nil)
+
+	assert.Equal(t, &UpdateWithNilDataError{}, err)
+}
+
+func TestSimpleMerkleTree_UpdateLeaf_UnknownData(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	err := tree.UpdateLeaf([]byte("unknown"), []byte("two"))
+
+	assert.Equal(t, &DataNotInMerkleTreeError{}, err)
+}
+
+func TestSimpleMerkleTree_UpdateLeaf_NewDataAlreadyExists(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one"), []byte("two")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	err := tree.UpdateLeaf([]byte("one"), []byte("two"))
+
+	assert.Equal(t, &UpdateWithExistingDataError{}, err)
+}
+
+func TestSimpleMerkleTree_UpdateLeaf_SingleNode(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	err := tree.UpdateLeaf([]byte("one"), []byte("two"))
+
+	assert.Nil(t, err)
+
+	assert.Equal(t, tree.GetRoot().Left.data, []byte("two"))
+	// Check right node to verify if duplicate node data changes as well
+	assert.Equal(t, tree.GetRoot().Right.data, []byte("two"))
+
+	proof, err := tree.GetMerkleProof([]byte("two"))
+	assert.Nil(t, err)
+	correct, err := tree.VerifyMerkleProof([]byte("two"), proof)
+	assert.True(t, correct)
+	assert.Nil(t, err)
+}
+
+func TestSimpleMerkleTree_UpdateLeaf_DoubleUpdate(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	err := tree.UpdateLeaf([]byte("one"), []byte("two"))
+	err = tree.UpdateLeaf([]byte("two"), []byte("three"))
+
+	assert.Equal(t, tree.GetRoot().Left.data, []byte("three"))
+	// Check right node to verify if duplicate node data changes as well
+	assert.Equal(t, tree.GetRoot().Right.data, []byte("three"))
+
+	proof, err := tree.GetMerkleProof([]byte("three"))
+	assert.Nil(t, err)
+	correct, err := tree.VerifyMerkleProof([]byte("three"), proof)
+	assert.True(t, correct)
+	assert.Nil(t, err)
+
+	// old updated element is not present anymore
+	proof, err = tree.GetMerkleProof([]byte("two"))
+	assert.Nil(t, proof)
+	assert.Equal(t, &DataNotInMerkleTreeError{}, err)
+}
+
+func TestSimpleMerkleTree_UpdateLeaf_MultipleNodes(t *testing.T) {
+	config := MerkleTreeConfig{hashingAlgorithmFactory: sha256.New}
+	data := [][]byte{[]byte("one"), []byte("two"), []byte("three"), []byte("four"), []byte("five")}
+	tree, _ := NewSimpleMerkleTree(config, data)
+
+	err := tree.UpdateLeaf([]byte("three"), []byte("testing"))
+
+	assert.Nil(t, err)
+
+	assert.Equal(t, tree.GetRoot().Left.Right.Left.data, []byte("testing"))
+
+	proof, err := tree.GetMerkleProof([]byte("testing"))
+	assert.Nil(t, err)
+	correct, err := tree.VerifyMerkleProof([]byte("testing"), proof)
+	assert.True(t, correct)
+	assert.Nil(t, err)
+}

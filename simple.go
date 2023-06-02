@@ -32,6 +32,20 @@ func (r *DataNotInMerkleTreeError) Error() string {
 	return "Provided data is not part of merkle tree, proof for it cannot be generated"
 }
 
+type UpdateWithNilDataError struct {
+}
+
+func (r *UpdateWithNilDataError) Error() string {
+	return "Provided data is can't be nil"
+}
+
+type UpdateWithExistingDataError struct {
+}
+
+func (r *UpdateWithExistingDataError) Error() string {
+	return "The new value already exists in the merkle tree, update is not possible"
+}
+
 func NewSimpleMerkleTree(config MerkleTreeConfig, data [][]byte) (MerkleTree, error) {
 	if len(data) == 0 {
 		return nil, &EmptyTreeDataError{}
@@ -52,7 +66,7 @@ func (s *simpleMerkleTree) GetMerkleProof(data []byte) ([][]byte, error) {
 
 	}
 	results := make([][]byte, 0)
-	dataHash := string(getHashFromData(data, s.config))
+	dataHash := string(calculateHashFromData(data, s.config))
 	node, ok := s.leafsByHashes[dataHash]
 	if !ok {
 		return nil, &DataNotInMerkleTreeError{}
@@ -83,6 +97,39 @@ func (s *simpleMerkleTree) VerifyMerkleProof(data []byte, merkleProof [][]byte) 
 	return bytes.Equal(dataHash, s.Root.Hash), nil
 }
 
+func (s *simpleMerkleTree) UpdateLeaf(oldData []byte, newData []byte) error {
+	if newData == nil {
+		return &UpdateWithNilDataError{}
+	}
+	newHash := calculateHashFromData(newData, s.config)
+	if _, ok := s.leafsByHashes[string(newHash)]; ok {
+		return &UpdateWithExistingDataError{}
+	}
+	oldHash := string(calculateHashFromData(oldData, s.config))
+	node, ok := s.leafsByHashes[oldHash]
+	if !ok {
+		return &DataNotInMerkleTreeError{}
+	}
+
+	delete(s.leafsByHashes, oldHash)
+	s.leafsByHashes[string(newHash)] = node
+
+	// Check whether node was paired with a dupe
+	if node.Parent != nil && bytes.Equal(node.Parent.Left.Hash, node.Parent.Right.Hash) {
+		node.Parent.Left = node
+		node.Parent.Right = node
+	}
+
+	node.data = newData
+	node.Hash = newHash
+
+	for node.Parent != nil {
+		node.Parent.Hash = hashInOrder(s.config.hashingAlgorithmFactory(), node.Parent.Left.Hash, node.Parent.Right.Hash)
+		node = node.Parent
+	}
+	return nil
+}
+
 func hashInOrder(hashingAlgorithm hash.Hash, first []byte, second []byte) []byte {
 	if bytes.Compare(first, second) == 1 {
 		first, second = second, first
@@ -93,16 +140,11 @@ func hashInOrder(hashingAlgorithm hash.Hash, first []byte, second []byte) []byte
 	return hashingAlgorithm.Sum(nil)
 }
 
-func (s *simpleMerkleTree) UpdateLeaf(oldHash []byte, newHash []byte) error {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (s *simpleMerkleTree) createLeafNodes(data [][]byte, config MerkleTreeConfig) []*Node {
 	s.leafsByHashes = make(map[string]*Node)
 	var nodes []*Node
 	for _, d := range data {
-		nodeHash := getHashFromData(d, config)
+		nodeHash := calculateHashFromData(d, config)
 		node := &Node{data: d, Hash: nodeHash}
 		nodes = append(nodes, node)
 		s.leafsByHashes[string(nodeHash)] = node
@@ -140,7 +182,7 @@ func buildTreeFromLeafs(tree *simpleMerkleTree, leafNodes []*Node) {
 	}
 }
 
-func getHashFromData(data []byte, treeConfig MerkleTreeConfig) []byte {
+func calculateHashFromData(data []byte, treeConfig MerkleTreeConfig) []byte {
 	h := treeConfig.hashingAlgorithmFactory()
 	h.Write(data)
 	return h.Sum(nil)
